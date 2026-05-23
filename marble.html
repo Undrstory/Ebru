@@ -1,0 +1,1202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ebru — Marble Paper Simulator</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+
+/* ── Theme tokens ── */
+:root {
+  --bg: #111;
+  --panel-bg: #161616;
+  --panel-border: #252525;
+  --title-color: #eee;
+  --text: #bbb;
+  --label: #777;
+  --btn-bg: #1c1c1c;
+  --btn-border: #2a2a2a;
+  --btn-text: #aaa;
+  --btn-hover-bg: #262626;
+  --btn-active-bg: #262626;
+  --btn-active-border: #555;
+  --btn-active-text: #ddd;
+  --mbtn-bg: #1e1e1e;
+  --mbtn-border: #2e2e2e;
+  --mbtn-text: #999;
+  --input-border: #333;
+  --dropzone-border: #333;
+  --dropzone-text: #555;
+  --dropzone-hover-bg: #1e1e1e;
+  --section-border: #252525;
+  --popt-border: #222;
+  --sdel-bg: #1e1e1e;
+  --sdel-border: #3a3a3a;
+  --sdel-text: #666;
+  --red-border: #6a2a2a;
+  --red-text: #c06060;
+  --red-hover-bg: #2a1a1a;
+  --hint-bg: #111;
+  --hint-border: #2a2a2a;
+  --hint-text: #555;
+  --credit-color: #444;
+}
+body.light {
+  --bg: #ccc;
+  --panel-bg: #f0f0f0;
+  --panel-border: #d0d0d0;
+  --title-color: #111;
+  --text: #444;
+  --label: #777;
+  --btn-bg: #e4e4e4;
+  --btn-border: #c8c8c8;
+  --btn-text: #555;
+  --btn-hover-bg: #d8d8d8;
+  --btn-active-bg: #d8d8d8;
+  --btn-active-border: #888;
+  --btn-active-text: #111;
+  --mbtn-bg: #e8e8e8;
+  --mbtn-border: #ccc;
+  --mbtn-text: #666;
+  --input-border: #bbb;
+  --dropzone-border: #bbb;
+  --dropzone-text: #999;
+  --dropzone-hover-bg: #e8e8e8;
+  --section-border: #d0d0d0;
+  --popt-border: #ddd;
+  --sdel-bg: #e8e8e8;
+  --sdel-border: #ccc;
+  --sdel-text: #999;
+  --red-border: #d08080;
+  --red-text: #b03030;
+  --red-hover-bg: #f0e0e0;
+  --hint-bg: #e8e8e8;
+  --hint-border: #d8d8d8;
+  --hint-text: #888;
+  --credit-color: #999;
+}
+
+html,body { height:100%; overflow:hidden; background:var(--bg); }
+body { display:flex; }
+#canvas { flex:1; min-width:0; cursor:crosshair; touch-action:none; display:block; }
+#panel {
+  width:300px; min-width:160px; max-width:400px; flex-shrink:0; position:relative;
+  background:var(--panel-bg); border-left:1px solid var(--panel-border);
+  display:flex; flex-direction:column; gap:12px; padding:14px 12px;
+  overflow-y:auto; font-family:system-ui,-apple-system,sans-serif;
+  font-size:12px; color:var(--text); user-select:none;
+  transition: background .25s, color .25s, border-color .25s;
+}
+/* ── Resize handle ── */
+#resizeHandle {
+  position:absolute; left:0; top:0; bottom:0; width:5px;
+  cursor:ew-resize; z-index:10;
+}
+#resizeHandle::after {
+  content:''; position:absolute; left:2px; top:50%; transform:translateY(-50%);
+  width:1px; height:32px; background:var(--section-border);
+  border-radius:1px; transition:.2s;
+}
+#resizeHandle:hover::after { background:var(--label); }
+/* ── Header ── */
+.ptitle {
+  display:flex; align-items:center; justify-content:space-between;
+  font-size:1.083em; font-weight:600; letter-spacing:3px; text-transform:uppercase;
+  color:var(--title-color); padding-bottom:10px; border-bottom:1px solid var(--section-border);
+}
+.hdr-icons { display:flex; gap:5px; align-items:center; }
+.icon-btn {
+  background:none; border:none; cursor:pointer; font-size:1.167em; padding:0;
+  line-height:1; opacity:.5; transition:.15s; flex-shrink:0;
+}
+.icon-btn:hover { opacity:1; }
+.hint {
+  font-size:0.75em; color:var(--hint-text); background:var(--hint-bg);
+  border:1px solid var(--hint-border); border-radius:4px;
+  padding:5px 7px; line-height:1.65;
+}
+/* ── Labels ── */
+.shd { font-size:0.75em; letter-spacing:1px; text-transform:uppercase; color:var(--label); margin-bottom:5px; }
+.brushval { font-size:0.75em; color:var(--label); float:right; }
+/* ── Swatches ── */
+.swatches { display:grid; grid-template-columns:repeat(5,1fr); gap:3px; }
+.swatch-wrap { position:relative; aspect-ratio:1; }
+.swatch { width:100%; height:100%; border-radius:4px; cursor:pointer;
+  border:2px solid transparent; transition:.15s; display:block; }
+.swatch.active { border-color:#fff; transform:scale(1.1); }
+body.light .swatch.active { border-color:#222; }
+.swatch:hover:not(.active) { border-color:#666; }
+.sdel { display:none; position:absolute; top:-3px; right:-3px;
+  width:14px; height:14px; border-radius:50%;
+  background:var(--sdel-bg); border:1px solid var(--sdel-border);
+  color:var(--sdel-text); font-size:0.833em; font-weight:700; line-height:12px;
+  text-align:center; cursor:pointer; padding:0; z-index:2; }
+.swatch-wrap:hover .sdel { display:block; }
+.sdel:hover { background:#7a1010; color:#eee; border-color:#c04040; }
+/* ── Color add button (picker + add unified) ── */
+.color-adder { display:flex; gap:4px; margin-top:5px; }
+.add-color-btn {
+  flex:1; display:flex; align-items:center; gap:6px; padding:4px 8px;
+  border:1px solid var(--mbtn-border); border-radius:4px;
+  background:var(--mbtn-bg); color:var(--mbtn-text);
+  cursor:pointer; font-size:0.833em; transition:.15s; text-align:left;
+}
+.add-color-btn:hover { background:var(--btn-hover-bg); color:var(--title-color); }
+.cprev { width:13px; height:13px; border-radius:3px; flex-shrink:0;
+  border:1px solid rgba(128,128,128,.35); }
+input[type=color]#cpick {
+  position:absolute; opacity:0; width:0; height:0; pointer-events:none;
+}
+.mbtn { flex:0 0 auto; padding:4px 8px; border:1px solid var(--mbtn-border); border-radius:4px;
+  background:var(--mbtn-bg); color:var(--mbtn-text); cursor:pointer; font-size:0.833em; transition:.15s; }
+.mbtn:hover { background:var(--btn-hover-bg); color:var(--title-color); }
+/* ── Tool row ── */
+.toolrow { display:flex; gap:3px; }
+.tbtn { flex:1; padding:6px 4px; border:1px solid var(--btn-border); border-radius:4px;
+  background:var(--btn-bg); color:var(--label); cursor:pointer; font-size:0.833em; text-align:center; transition:.15s; }
+.tbtn.active { background:var(--btn-active-bg); border-color:var(--btn-active-border); color:var(--btn-active-text); }
+.tbtn:hover { color:var(--title-color); }
+/* ── Sliders ── */
+.rng { display:flex; flex-direction:column; gap:2px; }
+.rng input[type=range] {
+  width:100%; height:20px; cursor:pointer;  /* tall hit area, track stays thin */
+  -webkit-appearance:none; appearance:none; background:transparent; padding:0; }
+.rng input[type=range]::-webkit-slider-runnable-track {
+  height:3px; border-radius:2px; background:var(--btn-border); }
+.rng input[type=range]::-moz-range-track {
+  height:3px; border-radius:2px; background:var(--btn-border); }
+.rng input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance:none; width:11px; height:11px; border-radius:50%;
+  background:#888; cursor:pointer; margin-top:-4px; }
+.rng input[type=range]::-moz-range-thumb {
+  width:11px; height:11px; border-radius:50%;
+  background:#888; border:none; cursor:pointer; }
+/* ── Action buttons ── */
+.abtn { width:100%; padding:7px 0; border:1px solid var(--btn-border); border-radius:4px;
+  background:var(--btn-bg); color:var(--btn-text); cursor:pointer; font-size:0.917em; margin-bottom:3px;
+  transition:.15s; text-decoration:none; display:block; text-align:center; }
+.abtn:hover { background:var(--btn-hover-bg); color:var(--title-color); border-color:var(--btn-active-border); }
+.abtn.red { border-color:var(--red-border); color:var(--red-text); }
+.abtn.red:hover { background:var(--red-hover-bg); }
+.coffee-btn { font-size:0.833em; }
+/* ── Pattern options sub-section ── */
+.popt { display:flex; flex-direction:column; gap:7px;
+  border-top:1px solid var(--popt-border); margin-top:4px; padding-top:8px; }
+/* ── Image dropzone ── */
+#dropzone { border:1px dashed var(--dropzone-border); border-radius:6px; padding:12px 8px;
+  text-align:center; color:var(--dropzone-text); font-size:0.917em; line-height:1.8; cursor:pointer; transition:.2s; }
+#dropzone.over { border-color:#777; color:var(--text); background:var(--dropzone-hover-bg); }
+/* ── Bottom ── */
+.bottom { margin-top:auto; padding-top:10px; border-top:1px solid var(--section-border); }
+.bgrow { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+.bgrow .shd { margin:0; flex:1; }
+.credit {
+  font-size:0.75em; color:var(--credit-color); text-align:center;
+  padding-top:6px; letter-spacing:.4px;
+}
+.credit a { color:inherit; text-decoration:none; border-bottom:1px dotted currentColor; }
+.credit a:hover { opacity:.7; }
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<div id="panel">
+  <div id="resizeHandle"></div>
+  <div class="ptitle">
+    <span>Ebru</span>
+    <div class="hdr-icons">
+      <button class="icon-btn" id="fontToggle" title="Toggle large text">🔍</button>
+      <button class="icon-btn" id="themeToggle" title="Toggle light / dark mode">🌙</button>
+    </div>
+  </div>
+  <div class="hint">Double-click → drop paint · drag → stroke</div>
+
+  <!-- Paint colour -->
+  <div>
+    <div class="shd">Paint Color</div>
+    <div class="swatches" id="swatches"></div>
+    <div class="color-adder">
+      <button class="add-color-btn" id="btnadd">
+        <span class="cprev" id="cprev" style="background:#c04030"></span>
+        <span>＋ Add Color</span>
+      </button>
+      <button class="mbtn" id="btnreset">Reset</button>
+    </div>
+    <input type="color" id="cpick" value="#c04030">
+  </div>
+
+  <!-- Tool -->
+  <div>
+    <div class="shd">Tool</div>
+    <div class="toolrow">
+      <button class="tbtn active" data-tool="stylus">Stylus</button>
+      <button class="tbtn" data-tool="rake">Rake</button>
+      <button class="tbtn" data-tool="comb">Comb</button>
+    </div>
+  </div>
+
+  <div>
+    <div class="shd">Brush Size <span id="brushVal" class="brushval"></span></div>
+    <div class="rng"><input type="range" id="rBrush" min="3" max="180" value="50"></div>
+  </div>
+  <div>
+    <div class="shd">Wave Spread</div>
+    <div class="rng"><input type="range" id="rRipple" min="0" max="27" value="3" step="1"></div>
+  </div>
+  <div>
+    <div class="shd">Wave Strength</div>
+    <div class="rng"><input type="range" id="rWaveStr" min="0" max="9" value="1"></div>
+  </div>
+  <div>
+    <div class="shd">Paint Opacity</div>
+    <div class="rng"><input type="range" id="rAmount" min="5" max="100" value="100"></div>
+  </div>
+  <div>
+    <div class="shd">Rake Teeth</div>
+    <div class="rng"><input type="range" id="rTeeth" min="2" max="24" value="8"></div>
+  </div>
+  <div>
+    <div class="shd">Curl / Swirl</div>
+    <div class="rng"><input type="range" id="rCurl" min="0" max="80" value="0"></div>
+  </div>
+  <div>
+    <div class="shd">Curl Scale</div>
+    <div class="rng"><input type="range" id="rCurlScale" min="1" max="9" value="5"></div>
+  </div>
+
+  <!-- Patterns + pattern options -->
+  <div>
+    <div class="shd">Patterns</div>
+    <button class="abtn" id="btnDrops">Scattered Drops</button>
+    <button class="abtn" id="btnNonpareil">Nonpareil (Auto-Comb)</button>
+    <button class="abtn" id="btnPeacock">Peacock / Bouquet</button>
+    <button class="abtn" id="btnSpanish">Spanish Wave</button>
+
+    <div class="popt">
+      <div>
+        <div class="shd">Drop Size</div>
+        <div class="rng"><input type="range" id="rPatDrop" min="2" max="9" value="4"></div>
+      </div>
+      <div>
+        <div class="shd">Stripe Count</div>
+        <div class="rng"><input type="range" id="rPatStripes" min="2" max="10" value="6"></div>
+      </div>
+      <div>
+        <div class="shd">Direction</div>
+        <div class="toolrow">
+          <button class="tbtn active" id="dirH">Horizontal</button>
+          <button class="tbtn" id="dirV">Vertical</button>
+        </div>
+      </div>
+      <div>
+        <div class="shd">Wave Amplitude</div>
+        <div class="rng"><input type="range" id="rWaveAmp" min="0" max="12" value="5"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Image palette -->
+  <div>
+    <div class="shd">Image Palette</div>
+    <div id="dropzone">Drop image here<br>or click to browse<br>— extracts colors</div>
+    <input type="file" id="filein" accept="image/*" style="display:none">
+  </div>
+
+  <!-- Sharpen / Blur -->
+  <div>
+    <div class="shd">Sharpen ↔ Blur</div>
+    <div class="rng"><input type="range" id="rSharp" min="-20" max="20" value="0" step="1"></div>
+  </div>
+
+  <!-- Bottom controls -->
+  <div class="bottom">
+    <div class="bgrow">
+      <div class="shd">Canvas Color</div>
+      <input type="color" id="bgPick" value="#ffffff">
+    </div>
+    <button class="abtn red" id="btnClear">Clear Canvas</button>
+    <button class="abtn" id="btnSave">Save PNG</button>
+    <a class="abtn coffee-btn" id="btnCoffee" href="https://buymeacoffee.com/cinesepehr"
+       target="_blank" rel="noopener">☕ Like this? Buy me a coffee!</a>
+    <div class="credit">By <a href="https://www.samimi.ca" target="_blank" rel="noopener">Sepehr Samimi</a></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ── Canvas & HiDPI setup ───────────────────────────────────────────────────────
+const canvas = document.getElementById('canvas');
+const panel  = document.getElementById('panel');
+const DPR    = Math.min(window.devicePixelRatio || 1, 2);
+
+function resizeCanvas() {
+  const cssW = window.innerWidth - panel.offsetWidth;
+  const cssH = window.innerHeight;
+  canvas.style.width  = cssW + 'px';
+  canvas.style.height = cssH + 'px';
+  canvas.width  = Math.round(cssW * DPR);
+  canvas.height = Math.round(cssH * DPR);
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+const gl = canvas.getContext('webgl2', { alpha:false, antialias:false, preserveDrawingBuffer:true });
+if (!gl) { alert('WebGL2 required (Chrome / Firefox / Safari 15+)'); throw 0; }
+
+gl.getExtension('EXT_color_buffer_float');
+gl.getExtension('OES_texture_float_linear');
+
+// ── Sim constants ──────────────────────────────────────────────────────────────
+const SIM   = 256;
+const DYE   = 2048;   // 2× resolution for crisp edges
+const PITER = 25;
+let   BG    = [1.0, 1.0, 1.0]; // white by default; updated by canvas-colour picker
+
+// ── Shaders ────────────────────────────────────────────────────────────────────
+const VERT = `#version 300 es
+layout(location=0) in vec2 aPos;
+out vec2 vUv;
+void main(){ vUv=aPos*.5+.5; gl_Position=vec4(aPos,0.,1.); }`;
+
+const FILL = `#version 300 es
+precision highp float;
+in vec2 vUv;
+uniform vec3 uColor;
+out vec4 o;
+void main(){ o=vec4(uColor,1.); }`;
+
+const ADVECT = `#version 300 es
+precision highp float;
+in vec2 vUv;
+uniform sampler2D uVel, uSrc;
+uniform float uDt, uDiss;
+out vec4 o;
+void main(){
+  vec2 v = texture(uVel,vUv).xy;
+  o = uDiss * texture(uSrc, vUv - uDt*v);
+}`;
+
+const DIV = `#version 300 es
+precision highp float;
+in vec2 vUv;
+uniform sampler2D uVel;
+uniform vec2 uTx;
+out vec4 o;
+void main(){
+  float L=texture(uVel,vUv-vec2(uTx.x,0)).x;
+  float R=texture(uVel,vUv+vec2(uTx.x,0)).x;
+  float B=texture(uVel,vUv-vec2(0,uTx.y)).y;
+  float T=texture(uVel,vUv+vec2(0,uTx.y)).y;
+  o=vec4(.5*(R-L+T-B),0,0,1);
+}`;
+
+const CURL = `#version 300 es
+precision highp float;
+in vec2 vUv;
+uniform sampler2D uVel;
+uniform vec2 uTx;
+uniform float uScale;
+out vec4 o;
+void main(){
+  vec2 s = uTx * uScale;
+  float L=texture(uVel,vUv-vec2(s.x,0)).y;
+  float R=texture(uVel,vUv+vec2(s.x,0)).y;
+  float B=texture(uVel,vUv-vec2(0,s.y)).x;
+  float T=texture(uVel,vUv+vec2(0,s.y)).x;
+  o=vec4(.5*(R-L-T+B),0,0,1);
+}`;
+
+const VORT = `#version 300 es
+precision highp float;
+in vec2 vUv;
+uniform sampler2D uVel, uCurl;
+uniform vec2 uTx;
+uniform float uStr, uDt, uScale;
+out vec4 o;
+void main(){
+  vec2 s = uTx * uScale;
+  float L=texture(uCurl,vUv-vec2(s.x,0)).x;
+  float R=texture(uCurl,vUv+vec2(s.x,0)).x;
+  float B=texture(uCurl,vUv-vec2(0,s.y)).x;
+  float T=texture(uCurl,vUv+vec2(0,s.y)).x;
+  float C=texture(uCurl,vUv).x;
+  vec2 f=.5*vec2(abs(T)-abs(B),abs(R)-abs(L));
+  f/=length(f)+1e-5; f*=uStr*C; f.y*=-1.;
+  o=vec4(texture(uVel,vUv).xy+f*uDt,0,1);
+}`;
+
+const PRESS = `#version 300 es
+precision highp float;
+in vec2 vUv;
+uniform sampler2D uP, uDiv;
+uniform vec2 uTx;
+out vec4 o;
+void main(){
+  float L=texture(uP,vUv-vec2(uTx.x,0)).x;
+  float R=texture(uP,vUv+vec2(uTx.x,0)).x;
+  float B=texture(uP,vUv-vec2(0,uTx.y)).x;
+  float T=texture(uP,vUv+vec2(0,uTx.y)).x;
+  o=vec4((L+R+B+T-texture(uDiv,vUv).x)*.25,0,0,1);
+}`;
+
+const GRADSUB = `#version 300 es
+precision highp float;
+in vec2 vUv;
+uniform sampler2D uP, uVel;
+uniform vec2 uTx;
+out vec4 o;
+void main(){
+  float L=texture(uP,vUv-vec2(uTx.x,0)).x;
+  float R=texture(uP,vUv+vec2(uTx.x,0)).x;
+  float B=texture(uP,vUv-vec2(0,uTx.y)).x;
+  float T=texture(uP,vUv+vec2(0,uTx.y)).x;
+  o=vec4(texture(uVel,vUv).xy-.5*vec2(R-L,T-B),0,1);
+}`;
+
+// s² alpha gives crisp ink-like edges instead of a soft gaussian glow
+const SPLAT = `#version 300 es
+precision highp float;
+in vec2 vUv;
+uniform sampler2D uTarget;
+uniform vec2  uPt;
+uniform vec3  uColor;
+uniform float uRadius, uAspect, uAmt;
+uniform int   uIsDye;
+out vec4 o;
+void main(){
+  vec2 p=vUv-uPt; p.x*=uAspect;
+  float s=exp(-dot(p,p)/uRadius);
+  vec4 base=texture(uTarget,vUv);
+  if(uIsDye==1){
+    float alpha = clamp(s * s * uAmt * 4.5, 0., 1.);
+    o=vec4(mix(base.rgb, uColor, alpha), 1.);
+  } else {
+    o=vec4(base.xy+s*uColor.xy, 0., 1.);
+  }
+}`;
+
+// Near-linear tone map: preserves edge contrast, slightly richer pigment
+const DISPLAY = `#version 300 es
+precision highp float;
+in vec2 vUv;
+uniform sampler2D uDye;
+out vec4 o;
+vec3 saturate(vec3 c, float s){
+  float l=dot(c,vec3(.299,.587,.114));
+  return mix(vec3(l),c,s);
+}
+void main(){
+  vec3 c = texture(uDye,vUv).rgb;
+  c = pow(max(c, vec3(0.)), vec3(0.96));
+  c = saturate(c, 1.25);
+  o = vec4(clamp(c,0.,1.), 1.);
+}`;
+
+// Sharpen (uAmt > 0) / blur (uAmt < 0) — raw slider value -20..+20
+// Blur: widens the Gaussian sample step so even 3×3 covers a large radius
+// Sharpen: unsharp mask with strength proportional to slider
+const SHARPEN = `#version 300 es
+precision highp float;
+in vec2 vUv;
+uniform sampler2D uSrc;
+uniform vec2 uTx;
+uniform float uAmt;   // -20 (strong blur)  0 (off)  +20 (strong sharpen)
+out vec4 o;
+void main(){
+  vec3 c = texture(uSrc, vUv).rgb;
+  // Blur path: spread the 3×3 sample positions across up to 11 px radius
+  float stepMul = uAmt < 0. ? 1.0 + (-uAmt) * 0.5 : 1.0;
+  vec2 s = uTx * stepMul;
+  // 3×3 Gaussian at variable step size
+  vec3 blur = vec3(0.);
+  float k[9];
+  k[0]=1.;k[1]=2.;k[2]=1.; k[3]=2.;k[4]=4.;k[5]=2.; k[6]=1.;k[7]=2.;k[8]=1.;
+  for(int y=-1;y<=1;y++) for(int x=-1;x<=1;x++)
+    blur += texture(uSrc, vUv+vec2(float(x),float(y))*s).rgb * k[(y+1)*3+(x+1)];
+  blur /= 16.;
+  vec3 result;
+  if(uAmt >= 0.)
+    // Sharpen: unsharp mask — strength = uAmt * 0.3 so +20 → ×6 edge boost
+    result = c + (uAmt * 0.3) * (c - blur);
+  else
+    // Blur: just output the wide Gaussian (step size does the work)
+    result = blur;
+  o = vec4(clamp(result, 0., 1.), 1.);
+}`;
+
+// ── GL helpers ─────────────────────────────────────────────────────────────────
+function mkShader(type, src) {
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src); gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw gl.getShaderInfoLog(s);
+  return s;
+}
+function mkProg(frag) {
+  const p = gl.createProgram();
+  gl.attachShader(p, mkShader(gl.VERTEX_SHADER, VERT));
+  gl.attachShader(p, mkShader(gl.FRAGMENT_SHADER, frag));
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw gl.getProgramInfoLog(p);
+  const n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
+  const u = {};
+  for (let i=0;i<n;i++){ const {name}=gl.getActiveUniform(p,i); u[name]=gl.getUniformLocation(p,name); }
+  return { p, u, bind(){ gl.useProgram(this.p); } };
+}
+function mkFBO(w,h,iF,f,t) {
+  gl.activeTexture(gl.TEXTURE0);
+  const tex=gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D,tex);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+  gl.texImage2D(gl.TEXTURE_2D,0,iF,w,h,0,f,t,null);
+  const fbo=gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER,fbo);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,tex,0);
+  return {tex,fbo,w,h};
+}
+function mkDFBO(w,h,iF,f,t) {
+  let a=mkFBO(w,h,iF,f,t), b=mkFBO(w,h,iF,f,t);
+  return { get read(){return a;}, get write(){return b;}, swap(){[a,b]=[b,a];} };
+}
+function bindTex(unit, tex) {
+  gl.activeTexture(gl.TEXTURE0+unit);
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+}
+function renderTo(dst) {
+  if (dst) {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, dst.fbo);
+    gl.viewport(0,0,dst.w,dst.h);
+  } else {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.viewport(0,0,canvas.width,canvas.height);
+  }
+  gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
+}
+
+// ── Quad VAO ──────────────────────────────────────────────────────────────────
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+const buf = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,1,1]), gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);
+
+// ── Programs ──────────────────────────────────────────────────────────────────
+const pFill    = mkProg(FILL);
+const pAdvect  = mkProg(ADVECT);
+const pDiv     = mkProg(DIV);
+const pCurl    = mkProg(CURL);
+const pVort    = mkProg(VORT);
+const pPress   = mkProg(PRESS);
+const pGrad    = mkProg(GRADSUB);
+const pSplat   = mkProg(SPLAT);
+const pDisplay = mkProg(DISPLAY);
+const pSharpen = mkProg(SHARPEN);
+
+// ── FBOs ──────────────────────────────────────────────────────────────────────
+const RGBA16F = gl.RGBA16F, RGBA = gl.RGBA, HF = gl.HALF_FLOAT;
+let velFBO   = mkDFBO(SIM,SIM,RGBA16F,RGBA,HF);
+let dyeFBO   = mkDFBO(DYE,DYE,RGBA16F,RGBA,HF);
+let prsFBO   = mkDFBO(SIM,SIM,RGBA16F,RGBA,HF);
+let divFBO   = mkFBO(SIM,SIM,RGBA16F,RGBA,HF);
+let curlFBO  = mkFBO(SIM,SIM,RGBA16F,RGBA,HF);
+let sharpFBO = mkFBO(DYE,DYE,RGBA16F,RGBA,HF);
+
+function fillBG(fbo) {
+  pFill.bind();
+  gl.uniform3f(pFill.u['uColor'], ...BG);
+  renderTo(fbo);
+}
+function clearToBackground() {
+  fillBG(dyeFBO.read);
+  fillBG(dyeFBO.write);
+  [velFBO.read, velFBO.write, prsFBO.read, prsFBO.write].forEach(fbo => {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo.fbo);
+    gl.viewport(0,0,fbo.w,fbo.h);
+    gl.clearColor(0,0,0,0); gl.clear(gl.COLOR_BUFFER_BIT);
+  });
+}
+clearToBackground();
+
+// ── Simulation step ───────────────────────────────────────────────────────────
+const STX = 1/SIM, STY = 1/SIM;
+
+function simStep(dt) {
+  const curlStr   = parseFloat(document.getElementById('rCurl').value);
+  const curlScale = parseInt(document.getElementById('rCurlScale').value);
+
+  pCurl.bind();
+  bindTex(0,velFBO.read.tex);
+  gl.uniform1i(pCurl.u['uVel'],0);
+  gl.uniform2f(pCurl.u['uTx'],STX,STY);
+  gl.uniform1f(pCurl.u['uScale'],curlScale);
+  renderTo(curlFBO);
+
+  pVort.bind();
+  bindTex(0,velFBO.read.tex); bindTex(1,curlFBO.tex);
+  gl.uniform1i(pVort.u['uVel'],0); gl.uniform1i(pVort.u['uCurl'],1);
+  gl.uniform2f(pVort.u['uTx'],STX,STY);
+  gl.uniform1f(pVort.u['uStr'],curlStr);
+  gl.uniform1f(pVort.u['uDt'],dt);
+  gl.uniform1f(pVort.u['uScale'],curlScale);
+  renderTo(velFBO.write); velFBO.swap();
+
+  pDiv.bind();
+  bindTex(0,velFBO.read.tex);
+  gl.uniform1i(pDiv.u['uVel'],0);
+  gl.uniform2f(pDiv.u['uTx'],STX,STY);
+  renderTo(divFBO);
+
+  gl.bindFramebuffer(gl.FRAMEBUFFER,prsFBO.read.fbo);
+  gl.clearColor(0,0,0,0); gl.clear(gl.COLOR_BUFFER_BIT);
+  for (let i=0;i<PITER;i++) {
+    pPress.bind();
+    bindTex(0,prsFBO.read.tex); bindTex(1,divFBO.tex);
+    gl.uniform1i(pPress.u['uP'],0); gl.uniform1i(pPress.u['uDiv'],1);
+    gl.uniform2f(pPress.u['uTx'],STX,STY);
+    renderTo(prsFBO.write); prsFBO.swap();
+  }
+
+  pGrad.bind();
+  bindTex(0,prsFBO.read.tex); bindTex(1,velFBO.read.tex);
+  gl.uniform1i(pGrad.u['uP'],0); gl.uniform1i(pGrad.u['uVel'],1);
+  gl.uniform2f(pGrad.u['uTx'],STX,STY);
+  renderTo(velFBO.write); velFBO.swap();
+
+  // Advect velocity — aggressive decay so paint settles quickly, like a still water surface
+  pAdvect.bind();
+  bindTex(0,velFBO.read.tex); bindTex(1,velFBO.read.tex);
+  gl.uniform1i(pAdvect.u['uVel'],0); gl.uniform1i(pAdvect.u['uSrc'],1);
+  gl.uniform1f(pAdvect.u['uDt'],dt);
+  gl.uniform1f(pAdvect.u['uDiss'],0.92);
+  renderTo(velFBO.write); velFBO.swap();
+
+  // Advect dye — no decay: Ebru pigment stays exactly where it floats
+  pAdvect.bind();
+  bindTex(0,velFBO.read.tex); bindTex(1,dyeFBO.read.tex);
+  gl.uniform1i(pAdvect.u['uVel'],0); gl.uniform1i(pAdvect.u['uSrc'],1);
+  gl.uniform1f(pAdvect.u['uDt'],dt);
+  gl.uniform1f(pAdvect.u['uDiss'],1.0);
+  renderTo(dyeFBO.write); dyeFBO.swap();
+}
+
+// ── Splat helpers ─────────────────────────────────────────────────────────────
+function getAspect() { return canvas.width / canvas.height; }
+
+// Wave-spread multiplier — controls ring radius (3–27 → 1.0×–9.0×, 25 fine steps)
+function getRipple() {
+  return parseInt(document.getElementById('rRipple').value) / 3.0;
+}
+
+// Wave-strength multiplier — controls velocity magnitude (1–9 → 0.33×–3.0×)
+function getWaveStr() {
+  return parseInt(document.getElementById('rWaveStr').value) / 3.0;
+}
+
+function splatVel(x,y,vx,vy,radius) {
+  pSplat.bind();
+  bindTex(0,velFBO.read.tex);
+  gl.uniform1i(pSplat.u['uTarget'],0);
+  gl.uniform2f(pSplat.u['uPt'],x,y);
+  gl.uniform3f(pSplat.u['uColor'],vx,vy,0);
+  gl.uniform1f(pSplat.u['uRadius'],radius*radius);
+  gl.uniform1f(pSplat.u['uAspect'],getAspect());
+  gl.uniform1f(pSplat.u['uAmt'],1.0);
+  gl.uniform1i(pSplat.u['uIsDye'],0);
+  renderTo(velFBO.write); velFBO.swap();
+}
+
+function splatDye(x,y,color,radius,amt) {
+  pSplat.bind();
+  bindTex(0,dyeFBO.read.tex);
+  gl.uniform1i(pSplat.u['uTarget'],0);
+  gl.uniform2f(pSplat.u['uPt'],x,y);
+  gl.uniform3f(pSplat.u['uColor'],color[0],color[1],color[2]);
+  gl.uniform1f(pSplat.u['uRadius'],radius*radius);
+  gl.uniform1f(pSplat.u['uAspect'],getAspect());
+  gl.uniform1f(pSplat.u['uAmt'],amt);
+  gl.uniform1i(pSplat.u['uIsDye'],1);
+  renderTo(dyeFBO.write); dyeFBO.swap();
+}
+
+// Radial outward velocity ring — simulates a drop landing on still water.
+// Randomised each call so every drop looks unique and organically asymmetric.
+function splatRadial(x, y, radius, strength) {
+  const asp = getAspect();
+  const S   = getWaveStr();                          // velocity magnitude multiplier
+  const N   = 14 + Math.floor(Math.random() * 3);   // 14–16: enough for organic shape, not too wild
+  const phi = Math.random() * Math.PI * 2;           // random orientation — no two alike
+
+  for (let i = 0; i < N; i++) {
+    const a  = phi + (i / N) * Math.PI * 2;
+    const cx = Math.cos(a), cy = Math.sin(a);
+    const rJ = 0.85 + Math.random() * 0.30;          // ring radius ×0.85–1.15 (tighter = consistent size)
+    const sJ = 0.80 + Math.random() * 0.40;          // strength   ×0.80–1.20 (tighter = consistent weight)
+    splatVel(
+      x + (cx / asp) * radius * 0.70 * rJ,
+      y + cy          * radius * 0.70 * rJ,
+      cx * strength * sJ * S,                        // magnitude scaled by Wave Strength
+      cy * strength * sJ * S,
+      radius * 0.40
+    );
+  }
+
+  // Random off-axis drift
+  const dA = Math.random() * Math.PI * 2;
+  splatVel(x, y,
+    Math.cos(dA) * strength * 0.20 * S,
+    Math.sin(dA) * strength * 0.20 * S,
+    radius * 0.65);
+}
+
+// ── Mouse / touch ──────────────────────────────────────────────────────────────
+let mouse = { x:.5, y:.5, px:.5, py:.5, down:false, moved:false };
+let activeColor = [0.75, 0.25, 0.15];
+let currentTool = 'stylus';
+
+function toUV(e) {
+  const rect = canvas.getBoundingClientRect();
+  const cx = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+  const cy = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+  return { x: cx/rect.width, y: 1-cy/rect.height };
+}
+
+canvas.addEventListener('mousedown', e => {
+  const uv=toUV(e);
+  mouse={...uv,px:uv.x,py:uv.y,down:true,moved:false};
+});
+canvas.addEventListener('mousemove', e => {
+  if (!mouse.down) return;
+  const uv=toUV(e);
+  mouse.px=mouse.x; mouse.py=mouse.y;
+  mouse.x=uv.x; mouse.y=uv.y; mouse.moved=true;
+});
+canvas.addEventListener('mouseup',    ()=>{ mouse.down=false; });
+canvas.addEventListener('touchstart', e=>{ e.preventDefault(); const uv=toUV(e); mouse={...uv,px:uv.x,py:uv.y,down:true,moved:false}; },{passive:false});
+canvas.addEventListener('touchmove',  e=>{ e.preventDefault(); if(!mouse.down)return; const uv=toUV(e); mouse.px=mouse.x;mouse.py=mouse.y;mouse.x=uv.x;mouse.y=uv.y;mouse.moved=true; },{passive:false});
+canvas.addEventListener('touchend',   ()=>{ mouse.down=false; });
+
+// Scroll wheel → resize brush
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const el  = document.getElementById('rBrush');
+  const dir = e.deltaY > 0 ? -1 : 1;
+  // Accelerate at larger sizes so the full range feels consistent
+  const step = Math.max(1, Math.round(parseInt(el.value) * 0.08)) * dir;
+  el.value = Math.max(3, Math.min(180, parseInt(el.value) + step));
+  updateBrushLabel();
+}, { passive: false });
+
+function updateBrushLabel() {
+  const v = document.getElementById('rBrush').value;
+  document.getElementById('brushVal').textContent = v + 'px';
+}
+document.getElementById('rBrush').addEventListener('input', updateBrushLabel);
+updateBrushLabel();
+
+// Double-click = drop paint + concentric outward impulse (ink landing on water).
+canvas.addEventListener('dblclick', e => {
+  const uv  = toUV(e);
+  const amt = parseFloat(document.getElementById('rAmount').value)/100;
+  const r   = parseFloat(document.getElementById('rBrush').value) / canvas.height * DPR;
+  const M   = getRipple();
+  splatDye(uv.x, uv.y, activeColor, r * 0.75, amt);
+  splatRadial(uv.x, uv.y, r * M, r * 70);
+});
+
+function handleInput(dt) {
+  if (!mouse.down || !mouse.moved) return;
+  const brushPx = parseFloat(document.getElementById('rBrush').value);
+  const brushR  = brushPx / canvas.height * DPR;
+  const amt     = parseFloat(document.getElementById('rAmount').value)/100;
+  const teeth   = parseInt(document.getElementById('rTeeth').value);
+  const M       = getRipple();   // wave-spread: scales splat radius
+  const S       = getWaveStr();  // wave-strength: scales velocity magnitude
+
+  const dx=mouse.x-mouse.px, dy=mouse.y-mouse.py;
+  const speed=Math.sqrt(dx*dx+dy*dy);
+  if (speed < 0.00015) return;
+
+  const vx=dx/dt*0.85*S, vy=dy/dt*0.85*S;  // drag speed scaled by Wave Strength
+
+  if (currentTool==='stylus') {
+    // Velocity splat radius scales with wave spread — wider wake at high M
+    splatVel(mouse.x, mouse.y, vx, vy, brushR * M);
+    splatDye(mouse.x, mouse.y, activeColor, brushR*0.6, amt*0.18);
+  } else if (currentTool==='rake'||currentTool==='comb') {
+    const len=speed+1e-9;
+    const px=-dy/len, py=dx/len;
+    const span=brushR*3.5;
+    for (let i=0;i<teeth;i++) {
+      const t=teeth>1?(i/(teeth-1)-.5)*2:0;
+      const tx=mouse.x+px*t*span;
+      const ty=mouse.y+py*t*span;
+      let tvx=vx, tvy=vy;
+      if (currentTool==='comb'&&i%2===1){tvx=-vx;tvy=-vy;}
+      splatVel(tx, ty, tvx, tvy, brushR * 0.55 * M);
+    }
+  }
+}
+
+// ── Display ───────────────────────────────────────────────────────────────────
+function displayFrame() {
+  const sharpVal = parseFloat(document.getElementById('rSharp').value); // -20..+20
+
+  let srcTex = dyeFBO.read.tex;
+  if (sharpVal !== 0) {
+    pSharpen.bind();
+    bindTex(0, dyeFBO.read.tex);
+    gl.uniform1i(pSharpen.u['uSrc'], 0);
+    gl.uniform2f(pSharpen.u['uTx'], 1/DYE, 1/DYE);
+    gl.uniform1f(pSharpen.u['uAmt'], sharpVal); // raw value, shader handles scaling
+    renderTo(sharpFBO);
+    srcTex = sharpFBO.tex;
+  }
+
+  pDisplay.bind();
+  bindTex(0, srcTex);
+  gl.uniform1i(pDisplay.u['uDye'], 0);
+  renderTo(null);
+}
+
+// ── Loop ──────────────────────────────────────────────────────────────────────
+let lastT=0;
+function frame(t) {
+  const dt=Math.min((t-lastT)/1000, 0.033);
+  lastT=t;
+  handleInput(dt);
+  simStep(dt);
+  displayFrame();
+  mouse.moved=false;
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+// ── Colours ────────────────────────────────────────────────────────────────────
+const DEFAULT_PAL = [
+  '#c84030','#e0922a','#d4b830','#2e6e7a','#4a4e9c',
+];
+let palette=[...DEFAULT_PAL];
+
+function hexToRgb(h){
+  return [parseInt(h.slice(1,3),16)/255,parseInt(h.slice(3,5),16)/255,parseInt(h.slice(5,7),16)/255];
+}
+
+function renderSwatches(){
+  const el=document.getElementById('swatches'); el.innerHTML='';
+  palette.forEach((hex,i)=>{
+    const wrap=document.createElement('div');
+    wrap.className='swatch-wrap';
+
+    const d=document.createElement('div');
+    d.className='swatch'+(i===0?' active':'');
+    d.style.background=hex;
+    d.addEventListener('click',()=>{
+      document.querySelectorAll('.swatch').forEach(s=>s.classList.remove('active'));
+      d.classList.add('active'); activeColor=hexToRgb(hex);
+    });
+
+    const del=document.createElement('button');
+    del.className='sdel'; del.textContent='×'; del.title='Remove color';
+    del.addEventListener('click', e=>{
+      e.stopPropagation();
+      if(palette.length<=1) return; // keep at least one
+      palette.splice(i,1);
+      renderSwatches();
+    });
+
+    wrap.appendChild(d);
+    wrap.appendChild(del);
+    el.appendChild(wrap);
+  });
+  if(palette.length>0) activeColor=hexToRgb(palette[0]);
+}
+renderSwatches();
+
+// Unified color-add button: shows current color, click adds it then opens picker
+document.getElementById('btnadd').addEventListener('click', () => {
+  const h = document.getElementById('cpick').value;
+  if (!palette.includes(h)) { palette.unshift(h); renderSwatches(); }
+  document.getElementById('cpick').click();
+});
+document.getElementById('cpick').addEventListener('input', e => {
+  document.getElementById('cprev').style.background = e.target.value;
+});
+document.getElementById('btnreset').addEventListener('click',()=>{palette=[...DEFAULT_PAL];renderSwatches();});
+document.querySelectorAll('.tbtn[data-tool]').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.querySelectorAll('.tbtn[data-tool]').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active'); currentTool=b.dataset.tool;
+  });
+});
+
+// ── Pattern direction ──────────────────────────────────────────────────────────
+let patternDir = 'h'; // 'h' = horizontal stripes, 'v' = vertical stripes
+document.getElementById('dirH').addEventListener('click',()=>{
+  patternDir='h';
+  document.getElementById('dirH').classList.add('active');
+  document.getElementById('dirV').classList.remove('active');
+});
+document.getElementById('dirV').addEventListener('click',()=>{
+  patternDir='v';
+  document.getElementById('dirV').classList.add('active');
+  document.getElementById('dirH').classList.remove('active');
+});
+
+// ── Image palette extraction ──────────────────────────────────────────────────
+function rgbToHex(r,g,b){return '#'+[r,g,b].map(v=>Math.round(v).toString(16).padStart(2,'0')).join('');}
+
+function extractPalette(img, k=10){
+  const oc=document.createElement('canvas'); oc.width=oc.height=80;
+  const ctx=oc.getContext('2d'); ctx.drawImage(img,0,0,80,80);
+  const data=ctx.getImageData(0,0,80,80).data;
+  const px=[];
+  for(let i=0;i<data.length;i+=12){
+    if(data[i+3]<20)continue;
+    px.push([data[i],data[i+1],data[i+2]]);
+  }
+  let centers=Array.from({length:k},()=>px[Math.floor(Math.random()*px.length)].slice());
+  for(let iter=0;iter<25;iter++){
+    const sums=Array.from({length:k},()=>[0,0,0,0]);
+    px.forEach(p=>{
+      let best=0,bd=1e9;
+      centers.forEach((c,ci)=>{const d=(p[0]-c[0])**2+(p[1]-c[1])**2+(p[2]-c[2])**2;if(d<bd){bd=d;best=ci;}});
+      sums[best][0]+=p[0];sums[best][1]+=p[1];sums[best][2]+=p[2];sums[best][3]++;
+    });
+    centers=sums.map((s,i)=>s[3]?[s[0]/s[3],s[1]/s[3],s[2]/s[3]]:centers[i]);
+  }
+  return centers
+    .sort((a,b)=>Math.abs(a[0]-128)+Math.abs(a[1]-128)+Math.abs(a[2]-128) > Math.abs(b[0]-128)+Math.abs(b[1]-128)+Math.abs(b[2]-128)?-1:1)
+    .map(c=>rgbToHex(c[0],c[1],c[2]));
+}
+
+function loadImage(file){
+  const img=new Image(), url=URL.createObjectURL(file);
+  img.onload=()=>{ palette=extractPalette(img,5); renderSwatches(); URL.revokeObjectURL(url); };
+  img.src=url;
+}
+
+const dz=document.getElementById('dropzone');
+dz.addEventListener('click',()=>document.getElementById('filein').click());
+document.getElementById('filein').addEventListener('change',e=>{if(e.target.files[0])loadImage(e.target.files[0]);});
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('over'));
+dz.addEventListener('drop',e=>{
+  e.preventDefault();dz.classList.remove('over');
+  const f=e.dataTransfer.files[0];
+  if(f&&f.type.startsWith('image/'))loadImage(f);
+});
+canvas.addEventListener('dragover',e=>e.preventDefault());
+canvas.addEventListener('drop',e=>{
+  e.preventDefault();
+  const f=e.dataTransfer.files[0];
+  if(f&&f.type.startsWith('image/'))loadImage(f);
+});
+
+// ── Preset helpers ─────────────────────────────────────────────────────────────
+// Read shared pattern options
+function patOpts() {
+  const dropR    = parseInt(document.getElementById('rPatDrop').value)    * 0.008 + 0.012; // 0.028..0.084
+  const nColors  = Math.min(parseInt(document.getElementById('rPatStripes').value), palette.length);
+  const waveAmp  = parseInt(document.getElementById('rWaveAmp').value)    * 0.006; // 0..0.072
+  const horiz    = patternDir === 'h';
+  const cols     = palette.slice(0, nColors);
+  return { dropR, nColors, waveAmp, horiz, cols };
+}
+
+// Fill colour bands across the full canvas (multi-row so bands are solid, not lines)
+function buildBandDropSteps(opts) {
+  const { dropR, nColors, horiz, cols } = opts;
+  const steps = [];
+  const bandH   = 0.96 / nColors;
+  const numDots = Math.max(8, Math.round(0.96 / (dropR * 1.5)));   // dots along main axis
+  const numRows = Math.max(1, Math.round(bandH / (dropR * 1.8)));  // rows to fill band height
+
+  for (let ci = 0; ci < nColors; ci++) {
+    const c = hexToRgb(cols[ci]);
+    const bandStart = 0.02 + ci * bandH;
+    for (let ri = 0; ri < numRows; ri++) {
+      const crossPos = bandStart + bandH * (ri + 0.5) / numRows;
+      for (let n = 0; n < numDots; n++) {
+        const mainPos = 0.02 + n * (0.96 / (numDots - 1));
+        const x = horiz ? mainPos : crossPos;
+        const y = horiz ? crossPos : mainPos;
+        steps.push(() => splatDye(x, y, c, dropR, 0.95));
+      }
+    }
+  }
+  return steps;
+}
+
+// ── Preset patterns ────────────────────────────────────────────────────────────
+let presetAnim=null;
+function runPreset(gen){
+  if(presetAnim){clearInterval(presetAnim);presetAnim=null;}
+  const steps=gen(); let i=0;
+  presetAnim=setInterval(()=>{
+    if(i>=steps.length){clearInterval(presetAnim);presetAnim=null;return;}
+    steps[i](); i++;
+  },18);
+}
+
+function presetDrops(){
+  const { dropR, cols } = patOpts();
+  const steps = [];
+  for(let n=0;n<32;n++){
+    const c=hexToRgb(cols[n%cols.length]);
+    const x=0.04+Math.random()*0.92, y=0.04+Math.random()*0.92;
+    steps.push(()=>{ splatDye(x,y,c,dropR,0.95); splatRadial(x,y,dropR,dropR*12); });
+  }
+  return steps;
+}
+
+function presetNonpareil(){
+  const { dropR, nColors, horiz, cols } = patOpts();
+  const steps = [];
+
+  // Random blobs with radial impulse — fill frame with full x/y range
+  for(let n=0;n<32;n++){
+    const c=hexToRgb(cols[n%cols.length]);
+    const x=0.04+Math.random()*0.92, y=0.04+Math.random()*0.92;
+    steps.push(()=>{ splatDye(x,y,c,dropR,0.95); splatRadial(x,y,dropR,dropR*12); });
+  }
+  steps.push(...Array(12).fill(()=>{}));
+
+  // Comb sweep — Stripe Count × 2 teeth (default 6 → 12 teeth)
+  const nt = nColors * 2, sp=1/(nt+1), nx=45;
+  for(let xi=0;xi<=nx;xi++){
+    const mainPos=xi/nx, prevMain=(xi>0?(xi-1)/nx:xi/nx);
+    steps.push(()=>{
+      const v=(mainPos-prevMain)/0.018*0.55;
+      for(let ti=0;ti<nt;ti++){
+        if(horiz) splatVel(mainPos, sp*(ti+1), v, 0, 0.013);
+        else      splatVel(sp*(ti+1), mainPos, 0, v, 0.013);
+      }
+    });
+  }
+  return steps;
+}
+
+function presetPeacock(){
+  const opts = patOpts();
+  const { horiz, nColors } = opts;
+  const steps = buildBandDropSteps(opts);
+  steps.push(...Array(15).fill(()=>{}));
+
+  // Alternating up/down sweeps — Stripe Count × 3 passes (default 6 → 18, matching original)
+  const nS = nColors * 3, nY=30;
+  for(let si=0;si<nS;si++){
+    const mainPos=(si+.5)/nS, up=si%2===0;
+    for(let yi=0;yi<=nY;yi++){
+      const crossPos=up?yi/nY:1-yi/nY;
+      const v=(up?1:-1)*(1/nY)/0.018*0.45;
+      const x=horiz?mainPos:crossPos, y=horiz?crossPos:mainPos;
+      const vx=horiz?0:v,             vy=horiz?v:0;
+      steps.push(()=>splatVel(x,y,vx,vy,0.015));
+    }
+  }
+  return steps;
+}
+
+function presetSpanish(){
+  const opts = patOpts();
+  const { horiz, waveAmp, nColors } = opts;
+  const steps = buildBandDropSteps(opts);
+  steps.push(...Array(15).fill(()=>{}));
+
+  // Sinusoidal comb sweep — nW wave cycles = Stripe Count (default 6 → 6 waves)
+  const nX=55, nW=nColors, nY=8;
+  for(let xi=0;xi<=nX;xi++){
+    const mainPos=xi/nX, prevMain=(xi>0?(xi-1)/nX:xi/nX);
+    steps.push(()=>{
+      for(let yi=0;yi<=nY;yi++){
+        const crossPos = yi/nY + waveAmp * Math.sin(mainPos * Math.PI * 2 * nW);
+        const vMain    = (mainPos-prevMain) / 0.018 * 0.65;
+        const vCross   = waveAmp * Math.cos(mainPos*Math.PI*2*nW) * Math.PI*2*nW * (1/nX) / 0.018 * 0.65;
+        const x  = horiz ? mainPos   : crossPos;
+        const y  = horiz ? crossPos  : mainPos;
+        const vx = horiz ? vMain     : vCross;
+        const vy = horiz ? vCross    : vMain;
+        splatVel(x, y, vx, vy, 0.013);
+      }
+    });
+  }
+  return steps;
+}
+
+document.getElementById('btnDrops').addEventListener('click',    ()=>runPreset(presetDrops));
+document.getElementById('btnNonpareil').addEventListener('click',()=>runPreset(presetNonpareil));
+document.getElementById('btnPeacock').addEventListener('click',  ()=>runPreset(presetPeacock));
+document.getElementById('btnSpanish').addEventListener('click',  ()=>runPreset(presetSpanish));
+
+// ── Canvas colour picker ───────────────────────────────────────────────────────
+// Updates the background colour that will be used on the next Clear Canvas.
+document.getElementById('bgPick').addEventListener('input', e=>{
+  const h=e.target.value;
+  BG=[parseInt(h.slice(1,3),16)/255, parseInt(h.slice(3,5),16)/255, parseInt(h.slice(5,7),16)/255];
+});
+
+// ── Clear & Save ──────────────────────────────────────────────────────────────
+document.getElementById('btnClear').addEventListener('click',()=>{
+  if(presetAnim){clearInterval(presetAnim);presetAnim=null;}
+  clearToBackground();
+});
+document.getElementById('btnSave').addEventListener('click',()=>{
+  displayFrame();
+  const a=document.createElement('a');
+  a.download='ebru-'+Date.now()+'.png';
+  a.href=canvas.toDataURL('image/png');
+  a.click();
+});
+
+// ── Light / dark mode (starts light) ─────────────────────────────────────────
+const themeToggle = document.getElementById('themeToggle');
+let isLight = true;
+document.body.classList.add('light');
+themeToggle.textContent = '🌙';
+themeToggle.addEventListener('click', () => {
+  isLight = !isLight;
+  document.body.classList.toggle('light', isLight);
+  themeToggle.textContent = isLight ? '🌙' : '☀️';
+});
+
+// ── Font size toggle — cycles 3 levels ───────────────────────────────────────
+const fontToggle = document.getElementById('fontToggle');
+let fontLevel = 0;
+fontToggle.addEventListener('click', () => {
+  fontLevel = (fontLevel + 1) % 3;
+  panel.style.fontSize = ['12px','14px','16px'][fontLevel];
+  fontToggle.style.opacity = ['0.5','0.75','1'][fontLevel];
+});
+
+// ── Sidebar resize ────────────────────────────────────────────────────────────
+const resizeHandle = document.getElementById('resizeHandle');
+let resizing = false, resizeStartX = 0, resizeStartW = 0;
+resizeHandle.addEventListener('mousedown', e => {
+  resizing = true;
+  resizeStartX = e.clientX;
+  resizeStartW = panel.offsetWidth;
+  document.body.style.cursor = 'ew-resize';
+  document.body.style.userSelect = 'none';
+  e.preventDefault();
+});
+document.addEventListener('mousemove', e => {
+  if (!resizing) return;
+  const newW = Math.max(160, Math.min(400, resizeStartW - (e.clientX - resizeStartX)));
+  panel.style.width = newW + 'px';
+  resizeCanvas();
+});
+document.addEventListener('mouseup', () => {
+  if (!resizing) return;
+  resizing = false;
+  document.body.style.cursor = '';
+  document.body.style.userSelect = '';
+});
+</script>
+</body>
+</html>
